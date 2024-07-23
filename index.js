@@ -36,7 +36,6 @@ function addOrUpdateStudent(key, studentId, username, xp, coins) {
   const studentIndex = array.findIndex(student => student.studentId === studentId);
 
   if (studentIndex !== -1) {
-    // Student exists, update their coins
     array[studentIndex].xp += xp;
     array[studentIndex].coins += coins;
   } else {
@@ -51,8 +50,8 @@ function addOrUpdateStudent(key, studentId, username, xp, coins) {
 async function clearData(quizId) {
     try{
         const leaderboard = leaderboardMap.get(quizId)
-        leaderboard.forEach((item)=> {updateQuizAttemptScore(quizId, item.studentId, item.xp); updateStudent(item.studentId, item.coins, item.xp)});
-        createLeaderboards(quizId,leaderboard)
+        Array.isArray(leaderboard) && leaderboard.forEach((item)=> {updateQuizAttemptScore(quizId, item.studentId, item.xp); updateStudent(item.studentId, item.coins, item.xp)});
+        Array.isArray(leaderboard) && createLeaderboards(quizId,leaderboard)
         updateQuizStatus(quizId, "Closed"); 
         activeQuizzes.delete(quizId);
         leaderboardMap.delete(quizId);
@@ -89,16 +88,13 @@ app.get('/', (req, res) => {
     res.send('Hello, world!');
 });
 
-// Socket.io connection handling
 io.on('connection', (socket) => {
-    // console.log(`User connected: ${socket.id}`);
     socket.on('getEndTime', (data) =>
     {
         socket.emit('quizEndTime', { endTime: activeQuizzes.get(data.quizId) });
         leaderboardMap.has(data.quizId) && io.emit("leaderboardUpdated", {quizId:data.quizId, leaderboard: leaderboardMap.get(data.quizId)});
     })
     socket.on("answer", async (data) => {
-        // console.log(`Answer received from ${socket.id}:`, data);
         try{
             addOrUpdateStudent(data.quizId, data.studentId, data.username, data.isCleared ? 100:10, data.isCleared ? data.timeTaken < 29 ? Math.round((30-data.timeTaken) * 5): 5:0 );
             const response = leaderboardMap.has(data.quizId) ? await createActivityAttempt(data) : null;
@@ -107,16 +103,12 @@ io.on('connection', (socket) => {
         } catch(e){
             console.log(e);
         }
-        // Handle the answer data here (e.g., save to database, broadcast to other users, etc.)
     });
 
-    socket.on("start", async (data) => { // in data I want to receive quiz id
-        // console.log(`Quiz started by ${socket.id}:`, data);
+    socket.on("start", async (data) => {
         const response = await updateQuizStatus(data.quizId, "Unlocked");
         activeQuizzes.set(data.quizId, (Date.now() + data.quizOpenTime*60000));
         setTimeout(()=>{clearData(data.quizId)},data.quizOpenTime*60000);
-        // console.log(response);
-        // Broadcast the start event to all connected clients
         io.emit("quizStarted", {quizId:data.quizId, endTime: activeQuizzes.get(data.quizId)});
     });
 
