@@ -113,8 +113,8 @@ io.on('connection', (socket) => {
     socket.on("start", async (data) => { // in data I want to receive quiz id
         // console.log(`Quiz started by ${socket.id}:`, data);
         const response = await updateQuizStatus(data.quizId, "Unlocked");
-        activeQuizzes.set(data.quizId, (Date.now() + 60000));
-        setTimeout(()=>{clearData(data.quizId)},60000);
+        activeQuizzes.set(data.quizId, (Date.now() + data.quizOpenTime*60000));
+        setTimeout(()=>{clearData(data.quizId)},data.quizOpenTime*60000);
         // console.log(response);
         // Broadcast the start event to all connected clients
         io.emit("quizStarted", {quizId:data.quizId, endTime: activeQuizzes.get(data.quizId)});
